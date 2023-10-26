@@ -1,0 +1,111 @@
+---
+title: "Information Age - Homework2"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+Load the packages
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(Metrics)
+library(irr)
+```
+
+Load the data
+```{r}
+df <- read_csv("C:/Users/Ines/OneDrive - FSV/CU1/Navigating the Information Age/HW2/jpm444_hw_data2.csv")
+print(df)
+```
+
+Create three separate dfs for each category 
+  -> In the label_true assign 0 if it has the value of that category and 1 if it is any of the other categories.
+  
+```{r}
+df_human_interest <- df
+df_economy <- df
+df_politics <- df
+```
+
+```{r}
+df_human_interest$label_true <- ifelse(df$label_true=="human_interest", 0, 1)
+df_human_interest$label_assigned <- ifelse(df$label_assigned=="human_interest", 0, 1)
+df_human_interest
+```
+
+```{r}
+df_economy$label_true <- ifelse(df$label_true=="economy", 0, 1)
+df_economy$label_assigned <- ifelse(df$label_assigned=="economy", 0, 1)
+df_economy
+```
+
+```{r}
+df_politics$label_true <- ifelse(df$label_true=="politics", 0, 1)
+df_politics$label_assigned <- ifelse(df$label_assigned=="politics", 0, 1)
+df_politics
+```
+
+
+Calculate precision
+
+```{r}
+precision_human_interest <- precision(df_human_interest$label_true, df_human_interest$label_assigned)
+precision_human_interest
+```
+```{r}
+precision_economy <- precision(df_economy$label_true, df_economy$label_assigned)
+precision_economy
+```
+```{r}
+precision_politics <- precision(df_politics$label_true, df_politics$label_assigned)
+precision_politics
+```
+Calculate Recall
+```{r}
+recall_human_interest <- recall(df_human_interest$label_true, df_human_interest$label_assigned)
+recall_human_interest
+```
+
+```{r}
+recall_economy <- recall(df_economy$label_true, df_economy$label_assigned)
+recall_economy
+```
+
+```{r}
+recall_politics <- recall(df_politics$label_true, df_politics$label_assigned)
+recall_politics
+```
+Calculate F1-score
+```{r}
+f1_human_interest <- fbeta_score(df_human_interest$label_true,df_human_interest$label_assigned)
+2*recall(df_human_interest$label_true,df_human_interest$label_assigned)*precision(df_human_interest$label_true,df_human_interest$label_assigned)/(recall(df_human_interest$label_true,df_human_interest$label_assigned)+precision(df_human_interest$label_true,df_human_interest$label_assigned))
+
+f1_human_interest
+```
+```{r}
+f1_economy <- fbeta_score(df_economy$label_true,df_economy$label_assigned)
+2*recall(df_economy$label_true,df_economy$label_assigned)*precision(df_economy$label_true,df_economy$label_assigned)/(recall(df_economy$label_true,df_economy$label_assigned)+precision(df_economy$label_true,df_economy$label_assigned))
+
+f1_economy
+```
+```{r}
+f1_politics <- fbeta_score(df_politics$label_true,df_politics$label_assigned)
+2*recall(df_politics$label_true,df_politics$label_assigned)*precision(df_politics$label_true,df_politics$label_assigned)/(recall(df_politics$label_true,df_politics$label_assigned)+precision(df_politics$label_true,df_politics$label_assigned))
+
+f1_politics
+```
+
+Create table to hold all the values
+
+```{r}
+final_table <- data.frame(
+  Category = c("human_interest", "economy", "politics"),
+  Precision = c(precision_human_interest, precision_economy, precision_politics),
+  Recall = c(recall_human_interest, recall_economy, recall_politics),
+  F1_Score = c(f1_human_interest, f1_economy, f1_politics)
+)
+
+final_table
+```
+

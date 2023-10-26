@@ -1,0 +1,66 @@
+```{r}
+library(tidyverse)
+library(quanteda)
+library(quanteda.textmodels)
+library(quanteda.textstats)
+library(quanteda.textplots)
+```
+
+
+```{r}
+df <- read_csv("C:/Users/Ines/OneDrive - FSV/CU1/Navigating the Information Age/HW3/Data/jpm444_hw_data3.csv")
+head(df)
+```
+
+
+```{r}
+corp <- corpus(df, text_field="content")
+
+print(corp)
+```
+
+
+```{r}
+toks <- tokens(corp, 
+        remove_punct = TRUE,
+        remove_numbers = TRUE,
+        remove_url = TRUE) %>%
+        tokens_tolower() %>%
+        tokens_wordstem() %>%
+        tokens_remove(pattern = stopwords("en"))
+
+print(toks)
+```
+
+
+```{r}
+colloc <- toks %>%
+textstat_collocations(size = 2)
+
+
+colloc2 <- filter(colloc, grepl("hillari|clinton", collocation))
+colloc3 <- filter(colloc2, !grepl("bill", collocation))
+colloc4 <- filter(colloc3, !grepl("chelsea", collocation))
+print(colloc4)
+```
+
+
+```{r}
+toks_update <- toks %>%
+  tokens_compound(colloc4, join=TRUE) 
+
+toks_update
+```
+
+```{r}
+dfm_update <- dfm(toks_update)
+
+dfm_update
+```
+   
+
+```{r}
+write.csv(colloc4, "C:/Users/Ines/OneDrive - FSV/CU1/Navigating the Information Age/HW3/Data/hillary_collocations.csv", row.names = FALSE)
+```
+
+

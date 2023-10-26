@@ -1,0 +1,141 @@
+---
+title: "Information Age - R Class 1"
+output:
+  html_document: default
+---
+
+Install packages (only once)
+```{r}
+#install.packages("tidyverse")
+#install.packages("Metrics")
+#install.packages("irr")
+```
+
+Load packages (until restart of the session)
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(Metrics)
+library(irr)
+```
+
+
+# Inter-coder agreement ###
+
+Load the data from .csv file. You need to specify the path to file first!
+```{r}
+d<-read.csv("C:/Users/Ines/OneDrive - FSV/CU1/Navigating the Information Age/Information Age Class 2 Resources-20231009/Data/glowin_human_coing_IOs_sample_jpm444.csv")
+table(d$label_information_coder1,d$label_information_coder2)
+```
+
+To calculate % agreement, create a new variable that scores 1 when the two codes agree and 0 if they do not
+```{r message=FALSE, warning=FALSE}
+d$agreement<-ifelse(d$label_information_coder1==d$label_information_coder2,1,0)
+d[1:13,c("label_information_coder1","label_information_coder2","agreement")]
+mean(d$agreement)
+```
+
+To calculate Krippendorf alpha, first transpose the matrix to wide format, with only the coding variables
+```{r}
+m<-d%>%select(label_information_coder1,label_information_coder2) #keep only the labels variables 
+  m[1:13,]
+tm<-t(as.matrix(m)) #transpose matrix to wide format (numerical values needed)
+
+```
+
+Calculate the alpha with the selected level of measurement
+```{r}
+kripp.alpha(tm, method=c("nominal")) #,"ordinal","interval","ratio"
+```
+
+You can re-do the process with any manually inserted data (c1 and c2 being the two series of labels by coder1 and coder 2)
+```{r}
+c1<-c(2,1,1,0,2)
+c2<-c(2,0,0,0,2)
+m <- matrix(c(c1, c2), ncol = 2)
+tm<-t(m)
+kripp.alpha(tm, method=c("nominal")) #,"ordinal","interval","ratio"
+```
+
+
+
+
+
+# Binary classification performance ###
+
+Load the data from .csv file. You need to specify the path to file first!
+```{r}
+d<-read.csv("C:/Users/Ines/OneDrive - FSV/CU1/Navigating the Information Age/Information Age Class 2 Resources-20231009/Data/news_politics_1000.csv")
+t<-table(d$label_true,d$label_assigned)
+t
+```
+
+Calculate recall and precision, from library Metrics
+```{r}
+#recall
+recall(d$label_true,d$label_assigned)
+#precision
+precision(d$label_true,d$label_assigned)
+```
+
+Calculate the F1-score, manually and from library Metrics
+```{r}
+#f1_score
+fbeta_score(d$label_true,d$label_assigned)
+2*recall(d$label_true,d$label_assigned)*precision(d$label_true,d$label_assigned)/(recall(d$label_true,d$label_assigned)+precision(d$label_true,d$label_assigned))
+
+```
+
+
+# Multiclass classification performance ###
+
+Load the data from .csv file. You need to specify the path to file first!
+```{r}
+d<-read.csv("C:/Users/Ines/OneDrive - FSV/CU1/Navigating the Information Age/Information Age Class 2 Resources-20231009/Data/news_3categories_1000.csv")
+
+```
+
+Create and empty data frame and list the categories over which to loop
+```{r}
+classes<-c("economy","politics","human_interest")
+metrics_results<-data.frame()
+```
+
+
+Run a loop when categories will be taken, one by one, analyzed, and results of that analysis stored in the empty data frame
+```{r}
+for (class in classes){
+  d1<-d%>%mutate(label_true=ifelse(label_true==class,1,0),
+                label_assigned=ifelse(label_assigned==class,1,0))
+  
+  
+  t<-table(d1$label_true,d1$label_assigned)
+  
+  #recall
+  r<-recall(d1$label_true,d1$label_assigned)
+  
+  # to calculate precision
+  p<-precision(d1$label_true,d1$label_assigned)
+  
+  # to calculate f1_score
+  f1<-fbeta_score(d1$label_true,d1$label_assigned)
+  
+  # put all three results, and the class analyzed, into a one-line data frame
+  results_line<-data.frame(class,r,p,f1)
+  
+  # bind (attach) the new line to the original data frame
+  metrics_results<-rbind(metrics_results,results_line)
+
+}
+
+```
+
+Macro average is a simple (un-weighted) average across the categories
+```{r}
+mean(metrics_results$r)
+mean(metrics_results$p)
+mean(metrics_results$f1)
+
+```
+
+

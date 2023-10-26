@@ -1,0 +1,188 @@
+
+Load a dataset
+
+-> This is the data 
+-> It is tsv because the data is stored tab separated. 
+```{R}
+library(tidyverse)
+
+df <- read_tsv("C:/Users/Ines/OneDrive - FSV/CU1/Navigating the Information Age/Script and Data-class3/Data/bbc-news-data.csv")
+head(df)
+```
+
+Create Corpus
+
+-> Telling quanteda to create a corpus where the text is stored in the content data and everything else is the contextual variable. 
+```{R}
+library(quanteda)
+
+corp <- corpus(df, text_field="content")
+
+print(corp)
+```
+This is a function where you can explore the text.
+-> This is to print the first five texts within the corpus. 
+-> The summary prints just the contextual variable - not the whole text (?)
+-> The difference between types and tokens
+  -> Types - number of unique words. 
+  -> Tokens - absolute number of words in the text. 
+```{R}
+summary(corp, 5)
+```
+This is to get just a part of the text
+-> Here you get just the texts that are about sport.
+-> After the creation of corpus it is good to subgroup. 
+-> Now you get just 500 documents. 
+```{R}
+corp_sport <- corpus_subset(corp, category=="sport")
+summary(corp_sport, 5)
+```
+
+Subset from Corpus based on multiple categories. 
+```{R}
+corp_pol <- corpus_subset(corp, category %in% c("politics", "business"))
+summary(corp_pol, 5)
+```
+
+Tokenization
+-> Apply this function on the corpus. 
+-> This is to clean the data in the tokens. 
+  -> Remove unformative part, transform it to lower cases, apply stemmer. 
+  -> Tokens_remove is to remove specific tokens from the text. 
+  -> Stemmer made "quarterly" into "quarter".
+```{R}
+toks <- tokens(corp, 
+        remove_punct = TRUE,
+        remove_numbers = TRUE) %>%
+        tokens_tolower() %>%
+        tokens_wordstem() %>%
+        tokens_remove(pattern = stopwords("en")) %>%
+        tokens_remove(pattern = "1.13bn")
+
+print(toks)
+```
+N-gram
+-> This pairs words together.
+-> Missing some explanation about the numbers. 
+-> Having the N-grams included is good because then the words are get toghether and then you can count larger context.
+  -> This is because some of these can be repeated all over the text - like "media_giant".
+  -> It increases the probability that you find these things. d
+
+```{R}
+toks_ngram <- tokens_ngrams(toks, n = 2:3)
+print(toks_ngram)
+```
+
+DFM
+-> Creates document feature matrix from tokenized texts. 
+-> Missing some explanation. 
+-> Then you can count how many times quarter is present in each text. 
+```{R}
+dfmat <- dfm(toks)
+print(dfmat)
+```
+
+```{R}
+library(quanteda.textmodels)
+library(quanteda.textstats)
+library(quanteda.textplots)
+
+textstat_frequency(dfmat)
+```
+
+
+Counting Words
+
+```{R}
+dfm_category <- dfm(toks) %>%
+              dfm_group(groups = category)
+textstat_frequency(dfm_category, n=10, groups = category)
+```
+
+Counting Words - Visualisation
+
+```{R}
+data <- textstat_frequency(dfmat, n=10)
+
+data %>% 
+  ggplot(aes(x=reorder(feature, frequency), y=frequency))+
+  geom_point()+
+  coord_flip()+
+  labs(x="")
+
+```
+
+Relative Frequencies
+-> Switch from frequencies to proportion. 
+
+```{R}
+dfmat_prop <- dfm_weight(dfmat, scheme  = "prop")
+textstat_frequency(dfmat_prop, n=10)
+```
+
+
+TF-IDF
+-> It is a better way to get the keywords. 
+-> Doesnt require as much preprocessing. 
+-> Missing an explanation about the frequency becoming one.
+
+```{R}
+dfmat_tfidf <- dfm_tfidf(dfm_category)
+textstat_frequency(dfmat_tfidf,force=TRUE, n=10, groups = category)
+```
+
+Collocations Extraction
+-> It has to do with specifying to get words with a minimum count number. 
+-> It is pretty effective at determining proper names that are repeatedly present together. 
+```{R}
+colloc <- toks %>%
+  textstat_collocations(min_count = 100)
+
+print(colloc)
+```
+
+Collocations Extraction
+-> Try to take all the collocations and update the document feature metrics. 
+```{R}
+toks_update <- toks %>%
+  tokens_compound(colloc, join=TRUE) %>%
+  tokens_remove(pattern = c("mr", "said"))
+
+dfm_update <- dfm(toks_update) %>%
+              dfm_group(groups = category) %>%
+              dfm_tfidf()
+textstat_frequency(dfm_update, n=10,force=TRUE, groups = category)
+```
+
+Keywords in Context
+
+```{R}
+toks2 <- tokens(corp)
+
+kw_blair <- kwic(toks2, pattern = c("blair"), window = 10)
+head(kw_blair, 5)
+```
+
+
+Lexical Diversity
+-> It specifies which measure you want to use. 
+-> The output is aggregate accross categories and using the two indicators. 
+-> The most diverse category is then entertainment. 
+
+```{R}
+tstat_lexdiv <- textstat_lexdiv(dfm_category, measure = c("TTR", "C"))
+print(tstat_lexdiv)
+```
+
+Document Similarity
+
+```{R}
+simil <- textstat_simil(dfmat, method = "cosine", margin = "documents")
+as.matrix(simil)
+```
+
+Document Similarity
+```{R}
+simil2 <- textstat_simil(dfmat, dfmat[, c("blair", "brown")], method = "cosine", margin = "features")
+as.list(simil2, n = 10)
+```

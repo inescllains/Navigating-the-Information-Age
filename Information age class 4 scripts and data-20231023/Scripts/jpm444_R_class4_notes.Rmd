@@ -1,0 +1,287 @@
+---
+title: "Information Age - R Class 4"
+output:
+  html_document: default
+---
+
+
+Install packages (only once)
+```{r}
+#install.packages("tidyverse")
+#install.packages("httr")
+#install.packages("jsonlite")
+#install.packages("tidyRSS")
+#install.packages("rvest")
+```
+
+
+Load packages (until restart of the session)
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(httr) # for API and scraping
+library(jsonlite) # for API
+library(tidyRSS) # for RSS
+library(rvest) # for scraping
+library(stringr)
+```
+
+
+Set the WD, load the newsapi.org apiKey
+These are to get the directories. 
+```{r}
+#setwd("C:/googledrivesync/vyuka_a_vedeni_praci/NIA_ML/Class4")
+#key<-source("keys.R")
+#setwd("C:/github_repos/information_age/Classes/Class04")
+#searchkey<-key$value
+```
+
+
+
+# Maps - visualization
+
+```{r}
+library(maps)
+library(ggplot2)
+library(tidyverse)
+```
+
+
+
+```{r}
+d<-read_tsv("C:/Users/Ines/OneDrive - FSV/CU1/Navigating the Information Age/Information age class 4 scripts and data-20231023/Data/ngecEvents.20231002133358.Release642.DV.txt")
+d2<-d%>%filter(Country!="None")
+table(d2$`Event Date`)
+dat_country<-d2%>%group_by(Country)%>%summarise(frequency=n())
+colnames(dat_country) <- c("id", "frequency")
+
+```
+
+```{r}
+world_map <- map_data(map = "world")
+world_map$region <- iso.alpha(world_map$region,n=3) # convert country name to ISO code
+
+ggplot(dat_country, aes(map_id = id)) +
+  geom_map(aes(fill = frequency), map = world_map) +
+  expand_limits(x = world_map$long, y = world_map$lat) +
+  ggtitle("My name")+
+  #scale_fill_continuous(name = "Frequency") +
+  scale_fill_viridis_c(name = "Frequency") +
+  theme_void() +
+  coord_fixed()
+
+```
+
+```{r}
+#ggsave("C:/github_repos/JPM444_NIA_ML/information_age/Classes/Class04/Visuals/polecat_event_intensity_230925_231001.png")
+
+```
+
+
+
+# APIs
+
+
+## Newsapi.org (do this only when you have your individual key from newsapi.org)
+```{r}
+#countries to iterate over
+countries<-c("us","de","cz","fr")
+# newsapi.rg headlines for country
+searchdomain='https://newsapi.org/v2/top-headlines?country='
+
+#Replace this for the homework with google for the homework. 
+```
+
+
+```{r}
+#empty data frame to to store the downloaded articles in
+naoutput<-data.frame()
+for(country in countries){
+  
+  #formulate the call - creates the URL to call the newsapi database
+  call<-paste0(searchdomain,country,"&PageSize=100&",searchkey)
+  
+  #make the call (needs internet connection of course)
+  res = GET(call)
+  
+  #get the data from the downloaded JSON file
+  data = fromJSON(rawToChar(res$content))
+  
+  #convert to data frame format
+  datadf<-data.frame(data)
+  
+  #rename the text variable and get rid of ' and ""
+  datadf$fulltext<-datadf$articles.content
+  datadf$fulltext<-str_replace_all(datadf$fulltext,"'","")
+  datadf$fulltext<-str_replace_all(datadf$fulltext,'"',"")
+  
+  #other variables, just the same content with better names
+  datadf$source_name_author<-datadf$articles.author
+  datadf$title<-datadf$articles.title
+  datadf$articleid<-datadf$articles.url
+  datadf$source_name<-datadf$articles.source$name
+  
+  #select only some variables to retain
+  dna<-datadf%>%select(articleid,title,fulltext,source_name,source_name_author,)
+  
+  #add the new variable with country code
+  dna$iso2<-country
+  
+  #bind the dataframe with all downloaded articles record to the originally empty dataframe (it wil grow with each country)
+  naoutput<-rbind(naoutput,dna)
+}
+```
+
+
+```{r}
+#name of the output file
+outputname<-"newsapi_sample_output.txt"
+#print out the output
+write.table(naoutput,outputname,row.names = F,sep="\t")
+```
+
+  
+  
+# RSS feeds
+
+```{r}
+#feed address
+myfeed<-"https://www.aljazeera.com/xml/rss/all.xml"
+```
+
+myfeed<-"https://news.un.org/feed/subscribe/en/news/all/rss.xml"
+myfeed<-"https://servis.idnes.cz/rss.aspx?c=zpravodaj"
+myfeed<-"https://www.faz.net/rss/aktuell/" 
+myfeed<-"https://www.france24.com/en/rss"
+myfeed<-"https://rss.nytimes.com/services/xml/rss/nyt/World.xml"
+myfeed<-"https://www.aljazeera.com/xml/rss/all.xml"
+myfeed<-"https://www.blesk.cz/rss"
+myfeed<-"https://news.google.com/rss?hl=pt-BR&gl=BR&ceid=BR:pt-419"
+
+
+```{r}
+feedres<-tidyfeed(
+  myfeed,
+  config = list(),
+  clean_tags = TRUE,
+  list = FALSE,
+  parse_dates = TRUE
+)
+```
+
+```{r}
+feedres$item_link
+```
+
+```{r}
+feedres<-feedres%>%select(item_title,item_link)
+```
+
+
+
+```{r}
+#name of the output file
+outputname<-"C:/Users/Ines/OneDrive - FSV/CU1/Navigating the Information Age/Information age class 4 scripts and data-20231023/Data/rssfeed_AJ.txt"
+#print out the output
+write.table(feedres,outputname,row.names = F, sep="\t")
+```
+
+
+
+# Scraping a website
+
+Get the html
+```{r}
+url<-"https://www.bbc.com/news/world-middle-east-67127567"
+document<-url %>% read_html()
+```
+
+
+Inspect the website and see that headings are in bold
+```{r}
+#
+#heading in bold
+b<-document %>% html_elements("b")%>%html_text2()
+b
+```
+
+Inspect the website and see that article content is surrounded by paragraphs (p) tags
+```{r}
+#
+p<-document %>% html_elements("p")%>%html_text2()
+#p
+```
+
+
+```{r}
+p<-p[1:length(p)-1]
+str_length(p)
+```
+
+```{r}
+pdf<-data.frame(fulltext=p)
+pdf2<-pdf%>%filter(str_length(fulltext)>70)
+```
+
+```{r}
+#exclude short segments and clean a bit
+p_clean<-p[which(str_length(p)>70)]
+raw<-paste(p_clean,collapse=" ")
+raw2<-str_replace_all(raw, fixed('\\\\'), "")
+print(raw2)
+#write(raw2, "test.txt")
+```
+
+
+Inspect the website and see that links are contained in 'a' nodes and have the 'href' attribute
+```{r}
+#
+a<-document%>% html_nodes("a") %>% html_attr('href')
+a
+```
+
+# Getting all links from the Reuters frontpage
+
+Try with the Reuters frontpage
+```{r}
+url<-"https://www.reuters.com/"
+document<-url %>% read_html()
+```
+
+
+Inspect the website and get the links; see the patterns in links
+```{r}
+#
+links<-document %>% html_elements("a")%>%html_attr("href")
+links
+```
+
+
+Filter links to get actual news (here world news)
+```{r}
+links<-links[which(str_detect(links, "https://", negate = TRUE))]
+links_world<-links[which(str_detect(links, "/world/", negate = FALSE))]
+links_world<-links[which(str_detect(links, "20[0-9]{2}-[0-9]{2}-[0-9]{2}/", negate = FALSE))]
+links_world
+```
+
+Filter links
+```{r}
+links<-links[which(str_detect(links, "https://", negate = TRUE))]
+links_world<-links[which(str_detect(links, "/world/", negate = FALSE))]
+links_world<-links[which(str_detect(links, "20[0-9]{2}-[0-9]{2}-[0-9]{2}/", negate = FALSE))]
+links_world
+```
+
+
+```{r}
+# one specific link
+link_world<-links_world[10]
+url<-paste0("https://www.reuters.com",link_world)
+url
+```
+
+
+
+
+

@@ -1,0 +1,87 @@
+Use collection of Tweets by Donald Trump
+  -> Use tokenizer to clean the texts (remove numbers, symbols,…)
+  -> Create 2 plots showing 10 most frequent features using pure frequencies and TF-IDF
+  -> Create .csv file with collocations mentionig Hillary Clinton
+
+```{r}
+library(tidyverse)
+library(quanteda)
+library(quanteda.textmodels)
+library(quanteda.textstats)
+library(quanteda.textplots)
+```
+
+
+Load the file
+```{r}
+df_2 <- read_csv("C:/Users/Ines/OneDrive - FSV/CU1/Navigating the Information Age/HW3/Data/jpm444_hw_data3.csv")
+head(df_2)
+```
+
+Clean the texts with the tokenizer
+```{r}
+corp_2 <- corpus(df_2, text_field="content")
+
+print(corp_2)
+```
+
+```{r}
+toks_2 <- tokens(corp_2, 
+        remove_punct = TRUE,
+        remove_numbers = TRUE,
+        remove_url = TRUE) %>%
+        tokens_tolower() %>%
+        tokens_wordstem() %>%
+        tokens_remove(pattern = stopwords("en"))
+
+print(toks_2)
+```
+Get the pure frequencies
+
+```{r}
+dfmat_2 <- dfm(toks_2)
+```
+
+
+```{r}
+textstat_frequency(dfmat_2, n=10)
+```
+
+
+
+```{r}
+data_2 <- textstat_frequency(dfmat_2, n=10)
+
+data_2 %>% 
+  ggplot(aes(x=reorder(feature, frequency), y=frequency))+
+  geom_point()+
+  coord_flip()+
+  labs(x="")
+ggsave("C:/Users/Ines/OneDrive - FSV/CU1/Navigating the Information Age/HW3/Data/pure_frequencies.png")
+
+```
+
+Calculate the TF-IDF
+
+```{r}
+dfmat_tfidf_2 <- dfm_tfidf(dfmat_2)
+dfmat_tfidf_2
+```
+
+
+```{r}
+data_tfidf_2 <- textstat_frequency(dfmat_tfidf_2, force = TRUE, n = 10)
+data_tfidf_2
+```
+
+
+```{r}
+data_3 <- textstat_frequency(dfmat_tfidf_2, force=TRUE, n=10)
+
+data_3 %>% 
+  ggplot(aes(x=reorder(feature, frequency), y=frequency))+
+  geom_point()+
+  coord_flip()+
+  labs(x="")
+ggsave("C:/Users/Ines/OneDrive - FSV/CU1/Navigating the Information Age/HW3/Data/tf-idf_frequencies.png")
+```
