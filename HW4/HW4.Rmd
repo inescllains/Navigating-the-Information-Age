@@ -1,0 +1,100 @@
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(httr) # for API and scraping
+library(jsonlite) # for API
+library(tidyRSS) # for RSS
+library(rvest) # for scraping
+library(stringr)
+```
+# Maps - visualization
+
+```{r}
+library(maps)
+library(ggplot2)
+library(tidyverse)
+```
+
+Use jpm444_hw_data4.csv from Moodle. In R, create a map of the distribution of the number reported events, across states (using column Country) with your name in the map title; export as a png file
+
+```{r}
+d<-read_tsv("C:/Users/Ines/OneDrive - FSV/CU1/Navigating the Information Age/Navigating-the-Information-Age/HW4/jpm444_hw_data4.txt")
+d
+```
+
+
+```{r}
+d2<-d%>%filter(Country!="None")
+d2
+```
+
+
+```{r}
+table(d2$`Event Date`)
+dat_country<-d2%>%group_by(Country)%>%summarise(frequency=n())
+colnames(dat_country) <- c("id", "frequency")
+```
+
+
+```{r}
+world_map <- map_data(map = "world")
+world_map$region <- iso.alpha(world_map$region,n=3) # convert country name to ISO code
+world_map
+```
+
+```{r}
+ggplot(dat_country, aes(map_id = id)) +
+  geom_map(aes(fill = frequency), map = world_map) +
+  expand_limits(x = world_map$long, y = world_map$lat) +
+  ggtitle("Ines Lains")+
+  #scale_fill_continuous(name = "Frequency") +
+  scale_fill_viridis_c(name = "Frequency") +
+  theme_void() +
+  coord_fixed() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    #legend.background = element_rect(fill = "white"),
+    legend.key = element_rect(color = "black", fill = "white"),  # Remove legend border
+    plot.title = element_text(color = "black")  # Remove title border
+  )
+```
+
+```{r}
+ggsave("C:/Users/Ines/OneDrive - FSV/CU1/Navigating the Information Age/Navigating-the-Information-Age/HW4/world_map.png")
+```
+Pick a non-European country with a Google News site, use the RSS feed to download the country headlines from the Google News; store the result in a data.frame object, submit it as a csv file
+```{r}
+myfeed<-"https://news.google.com/rss?hl=en&gl=US&ceid=US:en"
+```
+
+```{r}
+feedres<-tidyfeed(
+  myfeed,
+  config = list(),
+  clean_tags = TRUE,
+  list = FALSE,
+  parse_dates = TRUE
+)
+```
+```{r}
+feedres
+```
+
+```{r}
+feedres$item_title
+```
+```{r}
+feedres<-feedres%>%select(item_title)
+```
+
+```{r}
+#name of the output file
+outputname<-"C:/Users/Ines/OneDrive - FSV/CU1/Navigating the Information Age/Navigating-the-Information-Age/HW4/rssfeed_US.csvs"
+#print out the output
+write.table(feedres,outputname,row.names = F, sep="\t")
+```
+
+Pick the first article from this Google News feed (see above) and use the news-please heuristic to extract its title and its main text; submit a txt or docx file with the article url, its title, and its main text
+
+
+
