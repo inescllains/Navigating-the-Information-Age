@@ -94,7 +94,4 @@ outputname<-"C:/Users/Ines/OneDrive - FSV/CU1/Navigating the Information Age/Nav
 write.table(feedres,outputname,row.names = F, sep="\t")
 ```
 
-Pick the first article from this Google News feed (see above) and use the news-please heuristic to extract its title and its main text; submit a txt or docx file with the article url, its title, and its main text
-
-
 
