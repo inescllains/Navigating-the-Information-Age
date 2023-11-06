@@ -1,0 +1,206 @@
+---
+title: "Information Age - R Class 4"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+Only once
+```{r message=FALSE, warning=FALSE}
+#install.packages("countrycode")
+#install.packages("sentimentr")
+#install.packages("data.table")
+```
+
+
+
+Load packages (until restart of the session)
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(stringr)
+```
+
+
+
+
+# Search term detection (dictionary, lexicon techniques)
+
+```{r}
+fruit <- c("apple", "banana", "pear", "pineapple")
+str_detect(fruit, "a")
+str_detect(fruit, "b")
+
+# Returns TRUE if the pattern do NOT match
+str_detect(fruit, "p", negate = TRUE)
+
+# Retain only TRUE elements
+str_subset(fruit,"n")
+```
+
+
+
+# Working with regular expressions
+
+Plain string of characters may be ambiguous
+```{r}
+text <- c("The UN Secretary General visited Egypt.", "He offered unlimited support to everyone.")
+text<-tolower(text)
+print(text)
+str_detect(text, "un")
+```
+
+Ensuring a close match with regex metacharacters (here word boundaries)
+```{r}
+text <- c("The UN Secretary General visited Egypt.", "He offered unlimited support to everyone.")
+text<-tolower(text)
+str_detect(text, regex("\\bun\\b"))
+```
+
+Example with metacharacters and classes
+```{r}
+#
+text <- c("The EU27 is weaker after Brexit.", "The EU-27 is stronger after Brexit.","The EU suffered from Brexit.","Koala bears eat eucalyptus.")
+text<-tolower(text)
+print(text)
+str_detect(text, "eu")
+str_detect(text, regex("\\beu(|-)\\d{0,2}\\b"))
+#str_detect(text, regex("\\beu(|-)[1-9]{0,2}\\b"))
+```
+
+
+Countrycode library is based on regex
+https://cran.r-project.org/web/packages/countrycode/countrycode.pdf
+```{r}
+library(countrycode)
+inputcountry<-c("Spain","United kingdom","Britain","Czechia","Czech Republic")
+countrycode(
+  inputcountry,
+  origin="country.name",
+  destination="iso3c")
+```
+
+
+countrycode application
+```{r}
+library(countrycode)
+d<-read.table("../Data/A_RES_ES_10_21_vote.txt",header=T,sep="\t") #.. moves from the Scripts folder one level higher
+d$iso3<-countrycode(
+  d$un_country_name,
+  origin="country.name",
+  destination="iso3c")
+d[178:181,]
+```
+
+
+countrycode with custom match
+```{r}
+d<-read.table("../Data/A_RES_ES_10_21_vote.txt",header=T,sep="\t")
+d$iso3<-countrycode(
+  d$un_country_name,
+  origin="country.name",
+  destination="iso3c",
+  custom_match = c('TURKIYE' = 'TUR'))
+d[178:179,]
+```
+
+deal with lower/uppercase
+```{r}
+d$un_country_name<-tolower(d$un_country_name)
+d$iso3<-countrycode(
+  d$un_country_name,
+  origin="country.name",
+  destination="iso3c",
+  custom_match = c('turkiye' = 'TUR'))
+d[178:179,]
+```
+
+
+
+# Building a full loop over many searchterms
+
+Load the data
+```{r}
+library(dplyr)
+d<-read.table("../Data/ukraine_kwics_2018_2023_sample1000.txt",header=TRUE,sep="\t")
+d[1:2,]
+```
+
+Load the dictionary
+```{r}
+dict<-read.table("../Data/dictionary.txt",header=T,sep="\t")
+head(dict)
+```
+
+Turn plan text search terms into regex form with word boundaries (or apply any other transformation needed)
+```{r}
+dict$patternregex<-tolower(paste0("\\b",dict$pattern,"\\b"))
+patterns<-dict$patternregex
+names(patterns)<-dict$entity3n
+```
+
+The main loop
+For each pattern (search term) looked for, count its occurrences in column d$text
+Store that in a new data frame and name it with the label of the search term
+Bind this 1-column df to the original df
+```{r}
+for(i in 1:length(patterns)){
+  pattern<-patterns[i]
+  pattern_vector_counts<-data.frame(str_count(d$text, pattern))
+  names(pattern_vector_counts)<-names(pattern)
+  d<-cbind(d,pattern_vector_counts)
+}
+d[1:2,]
+sum(d$NATO)
+```
+
+
+# Sentiment and emotions
+
+Load the package, data already imported from earlier
+```{r}
+library(sentimentr)
+```
+
+Get the sentiment score, keep only the one variable with sentiment estimate (discard other)
+```{r}
+d$text_sentiment_comp<-sentiment_by(d$text)
+d$text_sentiment<-d$text_sentiment_comp$ave_sentiment
+d<-d%>%select(-contains("text_sentiment_comp"))
+d[1:2,c(1,4:6)]
+```
+
+Sentimentr with a custom dictionary (here a silly dictionary with only two terms)
+```{r}
+library(data.table)
+sent_dict<-read.table("../Data/sentiment_dictionary.txt",header=T,sep="\t")
+sent_dict<-as.data.table(sent_dict)
+setkey(sent_dict,x)
+head(sent_dict)
+```
+
+```{r}
+d$text_sentiment_comp<-sentiment_by(d$text,polarity_dt = sent_dict)
+d$text_sentiment<-d$text_sentiment_comp$ave_sentiment
+d<-d%>%select(-contains("text_sentiment_comp"))
+d[14:16,c(1,4:6)]
+```
+
+
+Emotions with sentimentr
+Emotion estimation gives estimate for 8 basic emotions + their negations
+```{r}
+emotion_comp<-emotion_by(d$text)
+head(emotion_comp)
+```
+
+Pick the one emotion with the highest estimated probability
+```{r}
+d$emotion_comp2<-emotion_comp %>% group_by(element_id) %>% summarise(emotion = emotion_type[which.max(ave_emotion)])
+d$emotion<-d$emotion$emotion
+d<-d%>%select(-contains("text_emotion_comp"))
+table(d$emotion)
+head(d)
+```
+
+

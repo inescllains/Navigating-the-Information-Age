@@ -1,0 +1,4 @@
+entity	entity3n	pattern
+UN	UNO01	United Nations
+UN	UNO02	UN
+NATO	NAT01	NATO
